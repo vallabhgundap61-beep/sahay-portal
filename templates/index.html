@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Sahay — Citizen Support Network{% endblock %}
+
+{% block content %}
+<!-- HERO BANNER WITH ANIMATED BACKGROUND -->
+<div class="relative bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white py-20 px-4 overflow-hidden shadow-xl">
+    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]"></div>
+    <div class="max-w-5xl mx-auto text-center relative z-10">
+        <span class="bg-blue-500/20 text-blue-300 border border-blue-400/30 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 mb-6 shadow-inner animate-pulse">
+            <i class="fa-solid fa-bolt text-amber-400"></i> Smart Citizen Grid Active
+        </span>
+        <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
+            Empowering Communities with <span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Instant Support</span>
+        </h1>
+        <p class="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Access verified emergency helplines, real-time civic issue tracking, legal guidelines, and e-Seva desks across 24 sectors.
+        </p>
+        <div class="flex flex-wrap justify-center gap-4">
+            <a href="/issues-feed" class="bg-white text-slate-900 hover:bg-slate-100 font-bold px-8 py-3.5 rounded-xl shadow-lg transition transform hover:-translate-y-0.5 flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-blue-600"></i> Open Live Dashboard
+            </a>
+            <a href="/report" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition transform hover:-translate-y-0.5 flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i> Report New Issue
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- CATEGORIES GRID SECTION -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+        <div>
+            <h2 class="text-3xl font-bold text-slate-900 tracking-tight">Available Resource Categories</h2>
+            <p class="text-slate-500 text-sm mt-1">Select a category to view emergency contacts, step-by-step guides, and local authorities.</p>
+        </div>
+        <span class="bg-blue-100 text-blue-700 font-bold px-4 py-1.5 rounded-xl text-sm shadow-xs flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span> 24 Active Sectors
+        </span>
+    </div>
+
+    <!-- LIVE SEARCH BAR -->
+    <div class="mb-10">
+        <div class="relative max-w-md">
+            <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+            <input type="text" id="categorySearch" placeholder="Search categories (e.g., medical, women, cyber, road)..." 
+                   class="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent shadow-xs transition">
+        </div>
+    </div>
+
+    <!-- CATEGORIES GRID -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="categoriesGrid">
+        {% for cat_id, cat in categories.items() %}
+        <div class="category-card bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs flex flex-col justify-between group transition duration-300"
+             data-title="{{ cat.title | lower }}" data-description="{{ cat.description | lower }}">
+            
+            <!-- CATEGORY CARD IMAGE BANNER -->
+            <div class="relative h-36 overflow-hidden bg-slate-100">
+                <img src="https://images.unsplash.com/photo-{% if 'women' in cat_id %}1573496359142-b8d87734a5a2{% elif 'mental' in cat_id %}1544717305-2782549b5136{% elif 'cyber' in cat_id %}1563986768609-322da13575f3{% elif 'utilities' in cat_id %}1473341304170-971dccb5ac1e{% elif 'environment' in cat_id %}1515260268569-9271009adfdb{% elif 'construction' in cat_id %}1541888946425-d0fbb18f86f8{% elif 'waste' in cat_id %}1532996122724-e3c6fcad4cb9{% elif 'child' in cat_id %}1509062522246-3755977927d7{% elif 'senior' in cat_id %}1516734212186-a967f81ad0d7{% elif 'legal' in cat_id %}1589829545856-d10d557cf95f{% elif 'disaster' in cat_id %}1547683905-f686c993aae5{% elif 'road' in cat_id %}1506521781263-d8422e82f27a{% elif 'medical' in cat_id %}1516549655169-df83a0774514{% elif 'consumer' in cat_id %}1556742049-0a67d554c254{% elif 'agri' in cat_id %}1500937386664-56d1dfef3854{% elif 'travel' in cat_id %}1488646953014-85cb44e25828{% elif 'tech' in cat_id %}1526374965328-7f61d4dc18c5{% elif 'animal' in cat_id %}1548767797-d8c844163c4c{% elif 'fire' in cat_id %}1508615039623-a25605d2b022{% elif 'railway' in cat_id %}1474487548417-781cb71495f3{% elif 'blood' in cat_id %}1615461066841-6116e61058f4{% else %}1454165804606-c3d57bc86b40{% endif %}?auto=format&fit=crop&w=600&q=80" 
+                     alt="{{ cat.title }}" 
+                     class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/20 to-transparent"></div>
+                
+                <!-- Floating Icon Badge -->
+                <div class="absolute bottom-3 left-3 w-10 h-10 rounded-xl bg-white/90 backdrop-blur-md text-blue-600 flex items-center justify-center text-base shadow-md">
+                    {% if 'women' in cat_id %}<i class="fa-solid fa-person-breastfeeding"></i>
+                    {% elif 'mental' in cat_id %}<i class="fa-solid fa-brain"></i>
+                    {% elif 'cyber' in cat_id %}<i class="fa-solid fa-shield-dog"></i>
+                    {% elif 'utilities' in cat_id %}<i class="fa-solid fa-bolt-lightning"></i>
+                    {% elif 'environment' in cat_id %}<i class="fa-solid fa-road"></i>
+                    {% elif 'construction' in cat_id %}<i class="fa-solid fa-helmet-safety"></i>
+                    {% elif 'courier' in cat_id %}<i class="fa-solid fa-truck-fast"></i>
+                    {% elif 'waste' in cat_id %}<i class="fa-solid fa-trash-can"></i>
+                    {% elif 'child' in cat_id %}<i class="fa-solid fa-child"></i>
+                    {% elif 'senior' in cat_id %}<i class="fa-solid fa-person-cane"></i>
+                    {% elif 'legal' in cat_id %}<i class="fa-solid fa-scale-balanced"></i>
+                    {% elif 'disaster' in cat_id %}<i class="fa-solid fa-house-tsunami"></i>
+                    {% elif 'road' in cat_id %}<i class="fa-solid fa-car-burst"></i>
+                    {% elif 'medical' in cat_id %}<i class="fa-solid fa-truck-medical"></i>
+                    {% elif 'consumer' in cat_id %}<i class="fa-solid fa-basket-shopping"></i>
+                    {% elif 'agri' in cat_id %}<i class="fa-solid fa-seedling"></i>
+                    {% elif 'travel' in cat_id %}<i class="fa-solid fa-plane-departure"></i>
+                    {% elif 'tech' in cat_id %}<i class="fa-solid fa-laptop-code"></i>
+                    {% elif 'animal' in cat_id %}<i class="fa-solid fa-paw"></i>
+                    {% elif 'fire' in cat_id %}<i class="fa-solid fa-fire-extinguisher"></i>
+                    {% elif 'railway' in cat_id %}<i class="fa-solid fa-train"></i>
+                    {% elif 'blood' in cat_id %}<i class="fa-solid fa-droplet"></i>
+                    {% else %}<i class="fa-solid fa-circle-info"></i>{% endif %}
+                </div>
+            </div>
+
+            <!-- CARD BODY -->
+            <div class="p-5 flex flex-col flex-grow justify-between">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900 mb-1.5 group-hover:text-blue-600 transition">{{ cat.title }}</h3>
+                    <p class="text-slate-600 text-xs line-clamp-2 leading-relaxed mb-4">{{ cat.description }}</p>
+                </div>
+
+                <a href="{{ url_for('view_category', category_id=cat_id) }}" class="inline-flex items-center gap-2 text-xs font-bold text-blue-600 group-hover:text-blue-700">
+                    View Resources <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-1.5 transition"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- NO RESULTS FOUND STATE -->
+    <div id="noResults" class="hidden text-center py-16">
+        <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl">
+            <i class="fa-solid fa-face-frown"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800">No matching categories found</h3>
+        <p class="text-slate-500 text-sm mt-1">Try searching with a different keyword like "police", "fire", or "legal".</p>
+    </div>
+</div>
+
+<!-- LIVE SEARCH SCRIPT -->
+<script>
+    document.getElementById('categorySearch').addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.category-card');
+        const noResults = document.getElementById('noResults');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const title = card.getAttribute('data-title');
+            const description = card.getAttribute('data-description');
+            
+            if (title.includes(query) || description.includes(query)) {
+                card.style.display = 'flex';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        if (visibleCount === 0) {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+    });
+</script>
+{% endblock %}

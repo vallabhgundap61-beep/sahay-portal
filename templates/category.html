@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}{{ category.name }} Resources — Sahay{% endblock %}
+{% block content %}
+
+<div class="category-hero-banner" style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.9), rgba(29, 78, 216, 0.85)), url('{{ category.image }}') center/cover no-repeat;">
+    <div class="category-hero-content">
+        <span style="font-size: 3rem;">{{ category.icon }}</span>
+        <h1>{{ category.name }}</h1>
+        <p>Verified helplines, step-by-step guidance, applicable laws, and trusted NGOs.</p>
+        
+        <div class="helpline-badge">
+            🚨 Direct Helpline: <a href="tel:{{ category.contact }}">{{ category.contact }}</a>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+            <a href="{{ category.link }}" target="_blank" class="official-portal-btn">🌐 Visit {{ category.link_text }} ↗</a>
+        </div>
+    </div>
+</div>
+
+<div class="category-details-container">
+    
+    <!-- STEP BY STEP & LAWS GRID -->
+    <div class="info-grid">
+        <div class="info-box">
+            <h3>📋 Step-by-Step Action Guide</h3>
+            <ol>
+                {% for step in category.steps %}
+                    <li>{{ step }}</li>
+                {% endfor %}
+            </ol>
+        </div>
+
+        <div class="info-box">
+            <h3>⚖️ Applicable Legal Rights & Acts</h3>
+            <ul>
+                {% for law in category.laws %}
+                    <li>
+                        <a href="{{ law.link }}" target="_blank" class="law-link">
+                            {{ law.name }} <span style="font-size: 0.8rem;">↗</span>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- TOP-RATED NGOS & VERIFIED SUPPORT ORGANIZATIONS -->
+    {% if category.ngos %}
+    <div class="ngo-section">
+        <h3><span>🤝</span> Top-Rated NGOs & Verified Support Organizations</h3>
+        <div class="ngo-grid">
+            {% for ngo in category.ngos %}
+                <div class="ngo-card">
+                    <div class="ngo-card-top">
+                        <h4>{{ ngo.name }}</h4>
+                        <a href="{{ ngo.link }}" target="_blank" class="ngo-web-link">Website ↗</a>
+                    </div>
+                    <p class="ngo-desc">{{ ngo.desc }}</p>
+                    <div class="ngo-helpline">
+                        📞 Helpline: <a href="tel:{{ ngo.contact }}">{{ ngo.contact }}</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- LOCAL RESOURCES & INTERACTIVE MAP SECTION -->
+    <div style="margin-top: 3rem;">
+        <h3 style="margin-bottom: 1rem; color: var(--slate-900);">📍 Hyper-Local Resources & Live Map</h3>
+        
+        <!-- GPS Detection Bar -->
+        <div style="background: white; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--slate-200); margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <p id="location-status" style="margin: 0; font-size: 0.9rem; color: var(--slate-600);">Detecting your location for proximity mapping...</p>
+            </div>
+            <button onclick="getUserLocation()" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: var(--radius-sm); cursor: pointer; font-weight: 500;">🔄 Refresh My Location</button>
+        </div>
+
+        <!-- Interactive Map Container -->
+        <div id="map" style="width: 100%; height: 350px; border-radius: var(--radius-md); border: 1px solid var(--slate-200); margin-bottom: 1.5rem; z-index: 1;"></div>
+
+        <!-- Resource Cards Grid -->
+        {% if resources %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                {% for res in resources %}
+                    <div style="background: white; border: 1px solid var(--slate-200); padding: 1.25rem; border-radius: var(--radius-md);">
+                        <h4 style="margin: 0 0 0.5rem 0; color: var(--primary);">{{ res.name }}</h4>
+                        <p style="margin: 0.25rem 0; font-size: 0.85rem; color: var(--slate-600);">📍 {{ res.address }}</p>
+                        <p style="margin: 0.25rem 0; font-size: 0.85rem; color: var(--slate-600);">📞 {{ res.contact }}</p>
+                        <p style="margin: 0.25rem 0; font-size: 0.85rem; color: var(--slate-500);">⏱️ Timings: {{ res.timing }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="color: var(--slate-500); background: white; padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--slate-200);">No specific physical centers registered for this category in your immediate local grid yet. Please use the official portal or general helpline above.</p>
+        {% endif %}
+    </div>
+
+    <!-- Leaflet Map Script Logic -->
+    <script>
+        // Initialize map centered at a default location (e.g., central coordinates)
+        var map = L.map('map').setView([18.5204, 73.8567], 13);
+
+        // Load standard open-source map tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Add a marker for a sample local resource
+        var resourceMarker = L.marker([18.5204, 73.8567]).addTo(map)
+            .bindPopup("<b>District Collectorate & Revenue Office</b><br>Civil Lines, Main District Center");
+
+        function getUserLocation() {
+            const statusText = document.getElementById('location-status');
+            if (!navigator.geolocation) {
+                statusText.innerText = "Geolocation is not supported by your browser.";
+                return;
+            }
+
+            statusText.innerText = "Locating you...";
+            navigator.geolocation.getCurrentPosition((position) => {
+                var userLat = position.coords.latitude;
+                var userLng = position.coords.longitude;
+
+                statusText.innerText = `Location found! Latitude: ${userLat.toFixed(4)}, Longitude: ${userLng.toFixed(4)}`;
+
+                // Re-center map to user coordinates and add a user pin
+                map.setView([userLat, userLng], 14);
+                L.marker([userLat, userLng], {
+                    icon: L.divIcon({
+                        className: 'user-location-pin',
+                        html: '📍',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map).bindPopup("<b>You are here</b>").openPopup();
+
+            }, () => {
+                statusText.innerText = "Unable to retrieve your location. Please check browser permissions.";
+            });
+        }
+
+        // Auto-run geolocation fetch on page load
+        window.onload = function() {
+            getUserLocation();
+        };
+    </script>
+
+    <div style="margin-top: 3rem; text-align: center;">
+        <a href="/" style="color: var(--primary); text-decoration: none; font-weight: 600;">← Back to All Categories</a>
+    </div>
+</div>
+
+{% endblock %}

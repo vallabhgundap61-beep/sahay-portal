@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Admin Portal Login — Sahay{% endblock %}
+{% block content %}
+<div class="form-page-wrapper">
+    <div class="form-card" style="max-width: 420px; text-align: center;">
+        <div class="form-header">
+            <span style="font-size: 2.5rem;">🔒</span>
+            <h2>Admin Portal Login</h2>
+            <p>Sign in to access and manage submitted civic reports dashboard.</p>
+        </div>
+
+        {% if error %}
+            <div class="error-alert">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" class="styled-form" style="text-align: left;">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter admin username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter password" required>
+            </div>
+
+            <button type="submit" class="primary-action-btn" style="width: 100%; margin-top: 0.5rem;">Sign In to Dashboard</button>
+        </form>
+
+        <div class="form-footer-link" style="margin-top: 1.5rem;">
+            <a href="/">← Back to Home Directory</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Sahay — Live Civic Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    
+    <!-- DASHBOARD HEADER & STATS -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">📊 Live Community Dashboard</h1>
+            <p class="text-slate-500 text-sm mt-1">Real-time civic incident tracking, municipal resolution progress, and community upvotes.</p>
+        </div>
+        <a href="/report" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-3 rounded-xl shadow-md transition flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> Report New Incident
+        </a>
+    </div>
+
+    <!-- METRIC CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl font-bold">
+                <i class="fa-solid fa-clipboard-list"></i>
+            </div>
+            <div>
+                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Incidents</p>
+                <h4 class="text-2xl font-extrabold text-slate-900 mt-0.5">{{ issues | length }}</h4>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl font-bold">
+                <i class="fa-solid fa-hourglass-half"></i>
+            </div>
+            <div>
+                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">In Progress / Active</p>
+                <h4 class="text-2xl font-extrabold text-slate-900 mt-0.5">
+                    {{ issues | selectattr("status", "equalto", "In Progress") | list | length + issues | selectattr("status", "equalto", "Submitted") | list | length }}
+                </h4>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl font-bold">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Resolved Reports</p>
+                <h4 class="text-2xl font-extrabold text-slate-900 mt-0.5">
+                    {{ issues | selectattr("status", "equalto", "Resolved") | list | length }}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- ISSUES CARDS GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for issue in issues %}
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between hover:shadow-md transition">
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <span class="bg-slate-100 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">
+                        {{ issue.category }}
+                    </span>
+                    
+                    {% if issue.status == 'Resolved' %}
+                        <span class="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1"><i class="fa-solid fa-check"></i> Resolved</span>
+                    {% elif issue.status == 'In Progress' %}
+                        <span class="bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1"><i class="fa-solid fa-clock"></i> In Progress</span>
+                    {% else %}
+                        <span class="bg-rose-100 text-rose-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1"><i class="fa-solid fa-flag"></i> Submitted</span>
+                    {% endif %}
+                </div>
+
+                <p class="text-slate-700 text-sm leading-relaxed mb-4">
+                    {{ issue.description }}
+                </p>
+
+                {% if issue.image_url %}
+                <img src="{{ issue.image_url }}" alt="Evidence" class="w-full h-44 object-cover rounded-xl mb-4 border border-slate-100">
+                {% endif %}
+            </div>
+
+            <div class="border-t border-slate-100 pt-4 flex justify-between items-center text-xs text-slate-500">
+                <span class="flex items-center gap-1"><i class="fa-solid fa-location-dot text-blue-600"></i> {{ "%.2f"|format(issue.lat) }}, {{ "%.2f"|format(issue.lng) }}</span>
+                
+                <form action="{{ url_for('upvote_issue', issue_id=issue.id) }}" method="POST" class="m-0">
+                    <button type="submit" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-thumbs-up text-blue-600"></i> Upvote ({{ issue.upvotes }})
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full text-center py-16 bg-white rounded-2xl border border-slate-200">
+            <i class="fa-solid fa-folder-open text-slate-300 text-5xl mb-3"></i>
+            <p class="text-slate-500 font-medium">No community issues reported yet.</p>
+            <a href="/report" class="text-blue-600 font-bold text-sm mt-2 inline-block">Be the first to report an issue &rarr;</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
