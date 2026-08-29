@@ -1,12 +1,23 @@
 import os
+import uuid
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # Database Configuration: Uses Render's Postgres URL if available, falls back to local SQLite
 database_url = os.environ.get('DATABASE_URL')
@@ -17,6 +28,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///sahay.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
 
 # Database Model for Community Issues
 class Issue(db.Model):
@@ -29,6 +41,7 @@ class Issue(db.Model):
     image_url = db.Column(db.String(255), default="")
     status = db.Column(db.String(50), default="Submitted")
     upvotes = db.Column(db.Integer, default=1)
+
 
 SAHAY_CATEGORIES = {
     "women-safety": {
@@ -395,6 +408,7 @@ SAHAY_CATEGORIES = {
     }
 }
 
+
 # Automatically initialize database tables and seed sample issues if empty
 with app.app_context():
     db.create_all()
@@ -414,9 +428,11 @@ with app.app_context():
         db.session.add_all(sample_issues)
         db.session.commit()
 
+
 @app.route('/')
 def index():
     return render_template('index.html', categories=SAHAY_CATEGORIES)
+
 
 @app.route('/category/<category_id>')
 def view_category(category_id):
@@ -425,28 +441,40 @@ def view_category(category_id):
         return render_template('index.html', categories=SAHAY_CATEGORIES), 404
     return render_template('category_detail.html', category=category_data, category_id=category_id)
 
+
 @app.route('/issues-feed')
 def issues_feed():
-    issues = Issue.query.order_by(Issue.id.desc()).all()
-    return render_template('issues_feed.html', issues=issues)
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    pagination = Issue.query.order_by(Issue.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template('issues_feed.html', issues=pagination.items, pagination=pagination)
+
 
 @app.route('/report', methods=['GET', 'POST'])
 def report_issue():
     if request.method == 'POST':
-        category = request.form.get('category', 'General Help')
-        description = request.form.get('description', '')
+        category = request.form.get('category', 'General Help').strip()
+        description = request.form.get('description', '').strip()
+
+        if not category or not description:
+            return render_template('report.html', error="Category and description are required."), 400
+
         try:
             lat = float(request.form.get('lat', 18.5204))
             lng = float(request.form.get('lng', 73.8567))
         except ValueError:
             lat, lng = 18.5204, 73.8567
-        
+
         image_url = ""
         file = request.files.get('image')
         if file and file.filename != '':
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            if not allowed_file(file.filename):
+                return render_template('report.html', error="Unsupported file type. Please upload a PNG, JPG, GIF, or WEBP image."), 400
+            filename = secure_filename(file.filename)
+            unique_name = f"{uuid.uuid4().hex}_{filename}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
             file.save(filepath)
-            image_url = f"/static/uploads/{file.filename}"
+            image_url = f"/static/uploads/{unique_name}"
 
         new_issue = Issue(
             category=category,
@@ -460,8 +488,9 @@ def report_issue():
         db.session.add(new_issue)
         db.session.commit()
         return redirect(url_for('issues_feed'))
-        
+
     return render_template('report.html')
+
 
 @app.route('/upvote/<int:issue_id>', methods=['POST'])
 def upvote_issue(issue_id):
@@ -471,15 +500,23 @@ def upvote_issue(issue_id):
         db.session.commit()
     return redirect(url_for('issues_feed'))
 
+
+@app.route('/healthz')
+def healthz():
+    return {"status": "ok"}, 200
+
+
 # Global Error Handlers
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('error.html', error_code=404, error_message="The requested resource or page could not be found."), 404
+
 
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()
     return render_template('error.html', error_code=500, error_message="An internal server error occurred while processing your request."), 500
 
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true', port=5000)
