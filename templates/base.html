@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sahay is a citizen support network offering verified emergency helplines, real-time civic issue tracking, legal guidance, and e-Seva desk locators across 24 categories.">
+    <meta name="theme-color" content="#2563eb">
+    <meta property="og:title" content="Sahay — Citizen Support Network">
+    <meta property="og:description" content="Verified emergency helplines, civic issue tracking, and legal guidance across 24 categories.">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
     <title>{% block title %}Sahay — Citizen Support Network{% endblock %}</title>
     <!-- Tailwind CSS CDN for rapid modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,6 +23,10 @@
         .card-hover:hover { transform: translateY(-6px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         .animate-pulse-slow { animation: pulse-slow 3s infinite; }
+        .typing-dot { animation: typing-bounce 1.2s infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes typing-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white">
@@ -33,7 +43,7 @@
                     <span class="block text-xs text-slate-500 font-medium">Citizen Emergency & Civic Grid</span>
                 </div>
             </a>
-            
+
             <nav class="hidden md:flex items-center gap-6 font-medium text-sm text-slate-600">
                 <a href="/" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-house"></i> Home</a>
                 <a href="/issues-feed" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-chart-pie"></i> Live Dashboard</a>
@@ -44,7 +54,18 @@
                 <a href="/report" class="hidden sm:inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/25 transition transform active:scale-95">
                     <i class="fa-solid fa-plus"></i> Report Incident
                 </a>
+                <!-- MOBILE MENU TOGGLE -->
+                <button onclick="toggleMobileMenu()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition" aria-label="Toggle menu">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
             </div>
+        </div>
+
+        <!-- MOBILE MENU PANEL -->
+        <div id="mobileMenu" class="hidden md:hidden border-t border-slate-200 bg-white px-4 py-3 flex flex-col gap-1">
+            <a href="/" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-house w-4"></i> Home</a>
+            <a href="/issues-feed" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-chart-pie w-4"></i> Live Dashboard</a>
+            <a href="/report" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation w-4"></i> Report Issue</a>
         </div>
     </header>
 
@@ -61,13 +82,13 @@
         </button>
     </div>
 
-    <!-- SIMPLE COPILOT MODAL -->
+    <!-- COPILOT MODAL -->
     <div id="copilotModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white flex justify-between items-center">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-robot"></i>
-                    <h3 class="font-bold">Sahay AI Copilot</h3>
+                    <h3 class="font-bold">Sahay Copilot</h3>
                 </div>
                 <button onclick="toggleCopilot()" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -77,8 +98,8 @@
                 </div>
             </div>
             <div class="p-3 bg-white border-t border-slate-200 flex gap-2">
-                <input type="text" id="chatInput" placeholder="Ask about helplines, laws, or reporting..." class="flex-grow px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-600">
-                <button onclick="sendChatMessage()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"><i class="fa-solid fa-paper-plane"></i></button>
+                <input type="text" id="chatInput" placeholder="Ask about helplines, laws, or reporting..." maxlength="500" class="flex-grow px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-600">
+                <button onclick="sendChatMessage()" id="chatSendBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
         </div>
     </div>
@@ -91,37 +112,80 @@
     </footer>
 
     <script>
+        function toggleMobileMenu() {
+            document.getElementById('mobileMenu').classList.toggle('hidden');
+        }
+
         function toggleCopilot() {
-            const modal = document.getElementById('copilotModal');
-            modal.classList.toggle('hidden');
+            document.getElementById('copilotModal').classList.toggle('hidden');
         }
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
+
+        function appendMessage(text, role) {
             const logs = document.getElementById('chatLogs');
-            if(!input.value.trim()) return;
-            
-            const userMsg = document.createElement('div');
-            userMsg.className = "bg-blue-600 text-white p-3 rounded-xl shadow-xs self-end max-w-[85%]";
-            userMsg.innerText = input.value;
-            logs.appendChild(userMsg);
-            
-            const query = input.value.toLowerCase();
-            input.value = "";
-            
-            setTimeout(() => {
-                const botMsg = document.createElement('div');
-                botMsg.className = "bg-white p-3 rounded-xl shadow-xs border border-slate-200 self-start max-w-[85%] text-slate-700";
-                if(query.includes('women') || query.includes('safety')) {
-                    botMsg.innerText = "For women safety emergencies, call the National Women Helpline at 1091 or emergency dispatch at 112.";
-                } else if(query.includes('cyber') || query.includes('fraud')) {
-                    botMsg.innerText = "Report cyber financial fraud immediately within the golden hour by calling 1930.";
-                } else {
-                    botMsg.innerText = "I recommend checking our 24 service categories on the home page or using the Live Dashboard to track neighborhood reports!";
-                }
-                logs.appendChild(botMsg);
-                logs.scrollTop = logs.scrollHeight;
-            }, 500);
+            const el = document.createElement('div');
+            if (role === 'user') {
+                el.className = "bg-blue-600 text-white p-3 rounded-xl shadow-xs self-end max-w-[85%]";
+            } else {
+                el.className = "bg-white p-3 rounded-xl shadow-xs border border-slate-200 self-start max-w-[85%] text-slate-700";
+            }
+            el.innerText = text;
+            logs.appendChild(el);
+            logs.scrollTop = logs.scrollHeight;
+            return el;
         }
+
+        function showTypingIndicator() {
+            const logs = document.getElementById('chatLogs');
+            const el = document.createElement('div');
+            el.id = 'typingIndicator';
+            el.className = "bg-white p-3 rounded-xl shadow-xs border border-slate-200 self-start flex gap-1";
+            el.innerHTML = '<span class="typing-dot w-1.5 h-1.5 rounded-full bg-slate-400"></span><span class="typing-dot w-1.5 h-1.5 rounded-full bg-slate-400"></span><span class="typing-dot w-1.5 h-1.5 rounded-full bg-slate-400"></span>';
+            logs.appendChild(el);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const el = document.getElementById('typingIndicator');
+            if (el) el.remove();
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('chatSendBtn');
+            const message = input.value.trim();
+            if (!message) return;
+
+            appendMessage(message, 'user');
+            input.value = "";
+            input.disabled = true;
+            sendBtn.disabled = true;
+            showTypingIndicator();
+
+            try {
+                const res = await fetch('/api/copilot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                const data = await res.json();
+                removeTypingIndicator();
+                appendMessage(data.reply || data.error || "Sorry, something went wrong.", 'bot');
+            } catch (err) {
+                removeTypingIndicator();
+                appendMessage("I couldn't reach the server. Please check your connection and try again.", 'bot');
+            } finally {
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.focus();
+            }
+        }
+
+        document.getElementById('chatInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
     </script>
 </body>
 </html>
