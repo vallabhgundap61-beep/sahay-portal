@@ -2,27 +2,27 @@
 {% block title %}{{ category.title }} — Sahay{% endblock %}
 
 {% block content %}
-<div style="max-width: 900px; margin: 2rem auto; padding: 0 1rem;">
-    <a href="{{ url_for('index') }}" style="color: var(--primary); text-decoration: none; font-weight: 500; display: inline-block; margin-bottom: 1.5rem;">&larr; Back to Categories</a>
-    
-    <div style="background: white; border: 1px solid var(--slate-200); border-radius: var(--radius-lg); padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 2rem;">
-        
+<div class="max-w-4xl mx-auto px-4 py-12">
+    <a href="{{ url_for('index') }}" class="text-blue-600 font-medium inline-flex items-center gap-1.5 mb-6 hover:underline">
+        <i class="fa-solid fa-arrow-left"></i> Back to Categories
+    </a>
+
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xs p-8 flex flex-col gap-8">
+
         <!-- HEADER INFO -->
         <div>
-            <h1 style="color: var(--slate-900); margin-top: 0; font-size: 1.8rem; margin-bottom: 0.5rem;">{{ category.title }}</h1>
-            <p style="color: var(--slate-600); font-size: 1.05rem; line-height: 1.5; margin: 0;">{{ category.description }}</p>
+            <h1 class="text-3xl font-extrabold text-slate-900 mb-2">{{ category.title }}</h1>
+            <p class="text-slate-600 text-base leading-relaxed">{{ category.description }}</p>
         </div>
 
         <!-- VERIFIED HELPLINES -->
         <div>
-            <h3 style="color: var(--slate-800); border-bottom: 2px solid var(--slate-100); padding-bottom: 0.5rem; margin-bottom: 1rem;">📞 Verified Helplines & Contacts</h3>
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <h3 class="text-slate-800 font-bold border-b-2 border-slate-100 pb-2 mb-4">📞 Verified Helplines & Contacts</h3>
+            <div class="flex flex-col gap-3">
                 {% for helpline in category.helplines %}
-                <div style="background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-md); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                    <div>
-                        <h4 style="margin: 0; color: var(--slate-900); font-size: 1.05rem;">{{ helpline.name }}</h4>
-                    </div>
-                    <a href="tel:{{ helpline.number }}" style="background: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm); text-decoration: none; font-weight: bold; font-size: 0.95rem;">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 flex justify-between items-center flex-wrap gap-3">
+                    <h4 class="text-slate-900 font-semibold text-base m-0">{{ helpline.name }}</h4>
+                    <a href="tel:{{ helpline.number }}" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition">
                         Call {{ helpline.number }}
                     </a>
                 </div>
@@ -33,10 +33,10 @@
         <!-- ACTION STEPS / TO-DO -->
         {% if category.todos %}
         <div>
-            <h3 style="color: var(--slate-800); border-bottom: 2px solid var(--slate-100); padding-bottom: 0.5rem; margin-bottom: 1rem;">✅ Recommended Action Steps (To-Do)</h3>
-            <ul style="margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <h3 class="text-slate-800 font-bold border-b-2 border-slate-100 pb-2 mb-4">✅ Recommended Action Steps (To-Do)</h3>
+            <ul class="list-disc pl-5 flex flex-col gap-2.5">
                 {% for todo in category.todos %}
-                <li style="color: var(--slate-700); font-size: 1rem; line-height: 1.4;">{{ todo }}</li>
+                <li class="text-slate-700 leading-relaxed">{{ todo }}</li>
                 {% endfor %}
             </ul>
         </div>
@@ -44,17 +44,17 @@
 
         <!-- GOVERNMENT LAWS & PROVISIONS -->
         {% if category.laws %}
-        <div style="background: #f8fafc; border: 1px solid var(--slate-200); border-radius: var(--radius-md); padding: 1.25rem 1.5rem;">
-            <h3 style="color: var(--slate-900); margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem;">⚖️ Relevant Government Laws & Rights</h3>
-            <p style="color: var(--slate-700); margin: 0; font-size: 0.95rem; line-height: 1.5;">{{ category.laws }}</p>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl px-6 py-5">
+            <h3 class="text-slate-900 font-bold mb-2">⚖️ Relevant Government Laws & Rights</h3>
+            <p class="text-slate-700 text-sm leading-relaxed m-0">{{ category.laws }}</p>
         </div>
         {% endif %}
 
         <!-- E-SEVA KENDRA / LOCAL DESK LOCATOR -->
         {% if category.eseva %}
-        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 1.25rem 1.5rem;">
-            <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem;">🏢 Authorized e-Seva Kendra & Office Desk</h3>
-            <p style="color: #1e3a8a; margin: 0; font-size: 0.95rem; line-height: 1.5;">{{ category.eseva }}</p>
+        <div class="bg-blue-50 border border-blue-200 rounded-xl px-6 py-5">
+            <h3 class="text-blue-900 font-bold mb-2">🏢 Authorized e-Seva Kendra & Office Desk</h3>
+            <p class="text-blue-900 text-sm leading-relaxed m-0">{{ category.eseva }}</p>
         </div>
         {% endif %}
 
