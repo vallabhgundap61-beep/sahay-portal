@@ -457,7 +457,7 @@ def report_issue():
         description = request.form.get('description', '').strip()
 
         if not category or not description:
-            return render_template('report.html', error="Category and description are required."), 400
+            return render_template('report.html', error="Category and description are required.", categories=SAHAY_CATEGORIES), 400
 
         try:
             lat = float(request.form.get('lat', 18.5204))
@@ -469,7 +469,7 @@ def report_issue():
         file = request.files.get('image')
         if file and file.filename != '':
             if not allowed_file(file.filename):
-                return render_template('report.html', error="Unsupported file type. Please upload a PNG, JPG, GIF, or WEBP image."), 400
+                return render_template('report.html', error="Unsupported file type. Please upload a PNG, JPG, GIF, or WEBP image.", categories=SAHAY_CATEGORIES), 400
             filename = secure_filename(file.filename)
             unique_name = f"{uuid.uuid4().hex}_{filename}"
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
@@ -489,7 +489,7 @@ def report_issue():
         db.session.commit()
         return redirect(url_for('issues_feed'))
 
-    return render_template('report.html')
+    return render_template('report.html', categories=SAHAY_CATEGORIES)
 
 
 @app.route('/upvote/<int:issue_id>', methods=['POST'])
