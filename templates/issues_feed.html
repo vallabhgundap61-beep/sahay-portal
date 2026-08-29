@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    
+
     <!-- DASHBOARD HEADER & STATS -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
@@ -22,7 +22,7 @@
                 <i class="fa-solid fa-clipboard-list"></i>
             </div>
             <div>
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Incidents</p>
+                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Incidents (this page)</p>
                 <h4 class="text-2xl font-extrabold text-slate-900 mt-0.5">{{ issues | length }}</h4>
             </div>
         </div>
@@ -61,7 +61,7 @@
                     <span class="bg-slate-100 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">
                         {{ issue.category }}
                     </span>
-                    
+
                     {% if issue.status == 'Resolved' %}
                         <span class="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1"><i class="fa-solid fa-check"></i> Resolved</span>
                     {% elif issue.status == 'In Progress' %}
@@ -76,13 +76,13 @@
                 </p>
 
                 {% if issue.image_url %}
-                <img src="{{ issue.image_url }}" alt="Evidence" class="w-full h-44 object-cover rounded-xl mb-4 border border-slate-100">
+                <img src="{{ issue.image_url }}" alt="Evidence" loading="lazy" class="w-full h-44 object-cover rounded-xl mb-4 border border-slate-100">
                 {% endif %}
             </div>
 
             <div class="border-t border-slate-100 pt-4 flex justify-between items-center text-xs text-slate-500">
                 <span class="flex items-center gap-1"><i class="fa-solid fa-location-dot text-blue-600"></i> {{ "%.2f"|format(issue.lat) }}, {{ "%.2f"|format(issue.lng) }}</span>
-                
+
                 <form action="{{ url_for('upvote_issue', issue_id=issue.id) }}" method="POST" class="m-0">
                     <button type="submit" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer">
                         <i class="fa-solid fa-thumbs-up text-blue-600"></i> Upvote ({{ issue.upvotes }})
@@ -98,5 +98,20 @@
         </div>
         {% endfor %}
     </div>
+
+    <!-- PAGINATION -->
+    {% if pagination and pagination.pages > 1 %}
+    <div class="flex justify-center items-center gap-3 mt-10">
+        <a href="{{ url_for('issues_feed', page=pagination.prev_num) if pagination.has_prev else '#' }}"
+           class="px-4 py-2 rounded-lg text-sm font-bold {% if pagination.has_prev %}bg-white border border-slate-200 text-slate-700 hover:bg-slate-50{% else %}bg-slate-100 text-slate-300 pointer-events-none{% endif %}">
+            &larr; Previous
+        </a>
+        <span class="text-sm text-slate-500 font-medium">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        <a href="{{ url_for('issues_feed', page=pagination.next_num) if pagination.has_next else '#' }}"
+           class="px-4 py-2 rounded-lg text-sm font-bold {% if pagination.has_next %}bg-white border border-slate-200 text-slate-700 hover:bg-slate-50{% else %}bg-slate-100 text-slate-300 pointer-events-none{% endif %}">
+            Next &rarr;
+        </a>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
