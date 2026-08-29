@@ -1,5 +1,6 @@
 import os
 import uuid
+import anthropic
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
@@ -504,6 +505,71 @@ def upvote_issue(issue_id):
 @app.route('/healthz')
 def healthz():
     return {"status": "ok"}, 200
+
+
+@app.route('/api/copilot', methods=['POST'])
+def copilot_chat():
+    data = request.get_json(silent=True) or {}
+    user_message = (data.get('message') or '').strip()
+
+    if not user_message:
+        return {"error": "Message is required."}, 400
+    if len(user_message) > 500:
+        return {"error": "Message is too long (max 500 characters)."}, 400
+
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if not api_key:
+        return {"reply": "The Copilot isn't fully set up yet — the site owner needs to add an ANTHROPIC_API_KEY. In the meantime, browse the category list above for verified helplines."}
+
+    # Ground the assistant in Sahay's own helpline data so it doesn't hallucinate numbers
+    context_lines = []
+    for cat in SAHAY_CATEGORIES.values():
+        helplines = ", ".join(f"{h['name']}: {h['number']}" for h in cat['helplines'])
+        context_lines.append(f"- {cat['title']}: {helplines}")
+    context = "\n".join(context_lines)
+
+    system_prompt = (
+        "You are Sahay Copilot, a helpful assistant embedded in the Sahay citizen support portal (India). "
+        "Answer briefly, in 2-4 sentences. When relevant, point the user to the specific helpline number from "
+        "this verified list rather than a number you recall from elsewhere:\n\n"
+        f"{context}\n\n"
+        "If the user describes a genuine emergency in progress, always tell them to call 112 (India's national "
+        "emergency number) immediately, in addition to any category-specific helpline. "
+        "You are not a substitute for professional legal, medical, or psychological advice, and should say so "
+        "if the question calls for that kind of professional care."
+    )
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model="claude-sonnet-5",
+            max_tokens=300,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}]
+        )
+        reply_text = "".join(block.text for block in response.content if block.type == "text")
+        return {"reply": reply_text or "I'm not sure how to help with that — try rephrasing, or browse the category list above."}
+    except Exception as e:
+        app.logger.error(f"Copilot error: {e}")
+        return {"reply": "Sorry, I'm having trouble responding right now. For emergencies, please call 112 directly."}
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    body = f"User-agent: *\nAllow: /\nSitemap: {request.url_root.rstrip('/')}/sitemap.xml\n"
+    return app.response_class(body, mimetype='text/plain')
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    base_url = request.url_root.rstrip('/')
+    pages = ['/', '/issues-feed', '/report'] + [f'/category/{cat_id}' for cat_id in SAHAY_CATEGORIES]
+    xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>',
+                 '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for p in pages:
+        xml_parts.append(f'<url><loc>{base_url}{p}</loc></url>')
+    xml_parts.append('</urlset>')
+    return app.response_class("\n".join(xml_parts), mimetype='application/xml')
 
 
 # Global Error Handlers
