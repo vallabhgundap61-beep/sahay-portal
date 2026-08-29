@@ -2,58 +2,62 @@
 {% block title %}Sahay — Report Issue{% endblock %}
 
 {% block content %}
-<!-- Leaflet CSS & JS for Interactive Map -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<div style="max-width: 800px; margin: 2rem auto; padding: 0 1rem;">
-    <h1 style="color: var(--slate-900); margin-bottom: 0.5rem;">🚨 Report a Civic Issue</h1>
-    <p style="color: var(--slate-600); margin-bottom: 2rem;">Pin the location on the map, provide details, and submit your report to the community feed.</p>
+<div class="max-w-3xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-extrabold text-slate-900 mb-2">🚨 Report a Civic Issue</h1>
+    <p class="text-slate-500 mb-8">Pin the location on the map, provide details, and submit your report to the community feed.</p>
 
-    <form action="/report" method="POST" enctype="multipart/form-data" style="background: white; border: 1px solid var(--slate-200); border-radius: var(--radius-lg); padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 1.5rem;">
-        
+    {% if error %}
+    <div class="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-4 py-3 mb-6 text-sm font-medium flex items-center gap-2">
+        <i class="fa-solid fa-circle-exclamation"></i> {{ error }}
+    </div>
+    {% endif %}
+
+    <form action="/report" method="POST" enctype="multipart/form-data" class="bg-white border border-slate-200 rounded-2xl p-8 shadow-xs flex flex-col gap-6">
+
         <div>
-            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--slate-700);">Select Category</label>
-            <select name="category" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--slate-300); border-radius: var(--radius-sm); font-size: 1rem; outline: none;">
+            <label class="block font-bold text-slate-700 mb-2">Select Category</label>
+            <select name="category" required class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
                 <option value="" disabled selected>Select an issue category...</option>
-                <option value="Environment & Civic">Environment & Civic</option>
-                <option value="Utilities & Disruption">Utilities & Disruption</option>
-                <option value="Waste & Recycling">Waste & Recycling</option>
-                <option value="Road Safety">Road Safety & Transport</option>
-                <option value="Cyber Fraud">Cyber Fraud</option>
-                <option value="Women Safety">Women Safety</option>
-                <option value="General Help">General Help & Queries</option>
+                {% for cat_id, cat in categories.items() %}
+                <option value="{{ cat.title }}">{{ cat.title }}</option>
+                {% endfor %}
             </select>
         </div>
 
         <div>
-            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--slate-700);">Issue Description</label>
-            <textarea name="description" rows="4" placeholder="Describe the problem in detail..." required style="width: 100%; padding: 0.75rem; border: 1px solid var(--slate-300); border-radius: var(--radius-sm); font-size: 1rem; outline: none; resize: vertical;"></textarea>
+            <label class="block font-bold text-slate-700 mb-2">Issue Description</label>
+            <textarea name="description" rows="4" placeholder="Describe the problem in detail..." required
+                      class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
         </div>
 
         <div>
-            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--slate-700);">Pin Location on Map (Click to update)</label>
-            <div id="map" style="width: 100%; height: 300px; border-radius: var(--radius-sm); border: 1px solid var(--slate-300);"></div>
-            <input type="hidden" id="lat" name="lat" value="28.6139">
-            <input type="hidden" id="lng" name="lng" value="77.2090">
+            <label class="block font-bold text-slate-700 mb-2">Pin Location on Map (Click to update)</label>
+            <div id="map" class="w-full h-72 rounded-xl border border-slate-300"></div>
+            <input type="hidden" id="lat" name="lat" value="18.5204">
+            <input type="hidden" id="lng" name="lng" value="73.8567">
         </div>
 
         <div>
-            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--slate-700);">Upload Photo Evidence (Optional)</label>
-            <input type="file" name="image" accept="image/*" style="font-size: 0.9rem; color: var(--slate-600);">
+            <label class="block font-bold text-slate-700 mb-2">Upload Photo Evidence (Optional)</label>
+            <input type="file" name="image" accept="image/png,image/jpeg,image/gif,image/webp"
+                   class="text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-semibold hover:file:bg-blue-100">
+            <p class="text-xs text-slate-400 mt-1">PNG, JPG, GIF, or WEBP. Max 16MB.</p>
         </div>
 
-        <button type="submit" style="background: var(--primary); color: white; border: none; padding: 1rem; border-radius: var(--radius-sm); font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s;">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition">
             Submit Report &rarr;
         </button>
     </form>
 </div>
 
 <script>
-    // Initialize Leaflet Map centered on default location
-    var defaultLat = 28.6139;
-    var defaultLng = 77.2090;
-    
+    // Default center: Pune, India (matches backend default)
+    var defaultLat = 18.5204;
+    var defaultLng = 73.8567;
+
     var map = L.map('map').setView([defaultLat, defaultLng], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -63,21 +67,18 @@
 
     var marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
 
-    // Update hidden inputs when marker is dragged
     marker.on('dragend', function (e) {
         var position = marker.getLatLng();
         document.getElementById('lat').value = position.lat;
         document.getElementById('lng').value = position.lng;
     });
 
-    // Update marker and inputs when map is clicked
     map.on('click', function (e) {
         marker.setLatLng(e.latlng);
         document.getElementById('lat').value = e.latlng.lat;
         document.getElementById('lng').value = e.latlng.lng;
     });
 
-    // Try to get user's current location automatically
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function (position) {
             var userLat = position.coords.latitude;
