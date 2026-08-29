@@ -1,6 +1,8 @@
 import os
 import uuid
 import anthropic
+import cloudinary
+import cloudinary.uploader
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import CSRFProtect
@@ -20,6 +22,11 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "5
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Cloudinary SDK auto-configures from the CLOUDINARY_URL env var if present.
+# Without it, uploads fall back to local disk (fine for local dev, but won't
+# survive a Render redeploy — see report_issue()).
+CLOUDINARY_CONFIGURED = bool(os.environ.get('CLOUDINARY_URL'))
 
 
 def allowed_file(filename):
@@ -478,11 +485,20 @@ def report_issue():
         if file and file.filename != '':
             if not allowed_file(file.filename):
                 return render_template('report.html', error="Unsupported file type. Please upload a PNG, JPG, GIF, or WEBP image.", categories=SAHAY_CATEGORIES), 400
-            filename = secure_filename(file.filename)
-            unique_name = f"{uuid.uuid4().hex}_{filename}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
-            file.save(filepath)
-            image_url = f"/static/uploads/{unique_name}"
+
+            if CLOUDINARY_CONFIGURED:
+                try:
+                    upload_result = cloudinary.uploader.upload(file, folder="sahay_issues", resource_type="image")
+                    image_url = upload_result.get('secure_url', '')
+                except Exception as e:
+                    app.logger.error(f"Cloudinary upload failed: {e}")
+                    return render_template('report.html', error="Image upload failed. Please try again.", categories=SAHAY_CATEGORIES), 500
+            else:
+                filename = secure_filename(file.filename)
+                unique_name = f"{uuid.uuid4().hex}_{filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+                file.save(filepath)
+                image_url = f"/static/uploads/{unique_name}"
 
         new_issue = Issue(
             category=category,
