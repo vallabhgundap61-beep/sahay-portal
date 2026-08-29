@@ -3,6 +3,9 @@ import uuid
 import anthropic
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -10,6 +13,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+csrf = CSRFProtect(app)
+limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -452,6 +458,7 @@ def issues_feed():
 
 
 @app.route('/report', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])
 def report_issue():
     if request.method == 'POST':
         category = request.form.get('category', 'General Help').strip()
@@ -494,6 +501,7 @@ def report_issue():
 
 
 @app.route('/upvote/<int:issue_id>', methods=['POST'])
+@limiter.limit("20 per minute")
 def upvote_issue(issue_id):
     issue = Issue.query.get(issue_id)
     if issue:
@@ -508,6 +516,8 @@ def healthz():
 
 
 @app.route('/api/copilot', methods=['POST'])
+@csrf.exempt
+@limiter.limit("10 per minute")
 def copilot_chat():
     data = request.get_json(silent=True) or {}
     user_message = (data.get('message') or '').strip()
@@ -576,6 +586,11 @@ def sitemap_xml():
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('error.html', error_code=404, error_message="The requested resource or page could not be found."), 404
+
+
+@app.errorhandler(429)
+def rate_limit_error(error):
+    return render_template('error.html', error_code=429, error_message="You're doing that a bit too fast. Please wait a moment and try again."), 429
 
 
 @app.errorhandler(500)
