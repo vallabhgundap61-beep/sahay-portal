@@ -5,3 +5,4 @@ Flask-Limiter==3.5.1
 gunicorn==21.2.0
 psycopg2-binary==2.9.9
 anthropic==0.40.0
+cloudinary==1.40.0
