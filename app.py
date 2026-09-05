@@ -1,5 +1,7 @@
 import os
 import uuid
+from functools import wraps
+
 import anthropic
 import cloudinary
 import cloudinary.uploader
@@ -8,7 +10,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
@@ -16,10 +20,10 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-produ
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-csrf = CSRFProtect(app)
-limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
-
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+# Comma-separated list of emails that get admin rights on registration, e.g. "you@example.com,other@example.com"
+ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get('ADMIN_EMAILS', '').split(',') if e.strip()}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -43,8 +47,38 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+csrf = CSRFProtect(app)
+limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
 
-# Database Model for Community Issues
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+login_manager.login_message = "Please log in to continue."
+login_manager.login_message_category = "error"
+
+
+# ---------- Models ----------
+
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
 class Issue(db.Model):
     __tablename__ = 'issues'
     id = db.Column(db.Integer, primary_key=True)
@@ -54,7 +88,31 @@ class Issue(db.Model):
     lng = db.Column(db.Float, default=73.8567)
     image_url = db.Column(db.String(255), default="")
     status = db.Column(db.String(50), default="Submitted")
-    upvotes = db.Column(db.Integer, default=1)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    reporter = db.relationship('User', backref='issues')
+
+    @property
+    def upvotes(self):
+        return Upvote.query.filter_by(issue_id=self.id).count()
+
+
+class Upvote(db.Model):
+    __tablename__ = 'upvotes'
+    id = db.Column(db.Integer, primary_key=True)
+    issue_id = db.Column(db.Integer, db.ForeignKey('issues.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    __table_args__ = (db.UniqueConstraint('issue_id', 'user_id', name='unique_vote_per_user'),)
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            return render_template('error.html', error_code=403, error_message="You don't have permission to view this page."), 403
+        return f(*args, **kwargs)
+    return decorated
 
 
 SAHAY_CATEGORIES = {
@@ -431,17 +489,19 @@ with app.app_context():
             Issue(
                 category="Environment & Civic",
                 description="Large deep pothole causing traffic obstruction near central market junction.",
-                lat=18.5204, lng=73.8567, image_url="", status="In Progress", upvotes=12
+                lat=18.5204, lng=73.8567, image_url="", status="In Progress"
             ),
             Issue(
                 category="Utilities & Disruption",
                 description="Streetlights completely non-functional for past 3 nights on main avenue.",
-                lat=18.5314, lng=73.8446, image_url="", status="Submitted", upvotes=8
+                lat=18.5314, lng=73.8446, image_url="", status="Submitted"
             )
         ]
         db.session.add_all(sample_issues)
         db.session.commit()
 
+
+# ---------- Public routes ----------
 
 @app.route('/')
 def index():
@@ -461,10 +521,76 @@ def issues_feed():
     page = request.args.get('page', 1, type=int)
     per_page = 20
     pagination = Issue.query.order_by(Issue.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
-    return render_template('issues_feed.html', issues=pagination.items, pagination=pagination)
 
+    voted_issue_ids = set()
+    if current_user.is_authenticated:
+        voted_issue_ids = {v.issue_id for v in Upvote.query.filter_by(user_id=current_user.id).all()}
+
+    return render_template('issues_feed.html', issues=pagination.items, pagination=pagination, voted_issue_ids=voted_issue_ids)
+
+
+# ---------- Auth routes ----------
+
+@app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+
+        if not name or not email or not password:
+            return render_template('register.html', error="All fields are required."), 400
+        if len(password) < 8:
+            return render_template('register.html', error="Password must be at least 8 characters."), 400
+        if User.query.filter_by(email=email).first():
+            return render_template('register.html', error="An account with that email already exists."), 400
+
+        user = User(name=name, email=email, is_admin=(email in ADMIN_EMAILS))
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        login_user(user)
+        return redirect(url_for('index'))
+
+    return render_template('register.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        user = User.query.filter_by(email=email).first()
+
+        if user and user.check_password(password):
+            login_user(user)
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('index'))
+
+        return render_template('login.html', error="Invalid email or password."), 401
+
+    return render_template('login.html')
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+
+# ---------- Reporting & voting (require login) ----------
 
 @app.route('/report', methods=['GET', 'POST'])
+@login_required
 @limiter.limit("5 per minute", methods=["POST"])
 def report_issue():
     if request.method == 'POST':
@@ -507,7 +633,7 @@ def report_issue():
             lng=lng,
             image_url=image_url,
             status="Submitted",
-            upvotes=1
+            reporter_id=current_user.id
         )
         db.session.add(new_issue)
         db.session.commit()
@@ -517,14 +643,42 @@ def report_issue():
 
 
 @app.route('/upvote/<int:issue_id>', methods=['POST'])
+@login_required
 @limiter.limit("20 per minute")
 def upvote_issue(issue_id):
     issue = Issue.query.get(issue_id)
     if issue:
-        issue.upvotes += 1
-        db.session.commit()
+        already_voted = Upvote.query.filter_by(issue_id=issue_id, user_id=current_user.id).first()
+        if not already_voted:
+            db.session.add(Upvote(issue_id=issue_id, user_id=current_user.id))
+            db.session.commit()
     return redirect(url_for('issues_feed'))
 
+
+# ---------- Admin ----------
+
+@app.route('/admin/issues')
+@login_required
+@admin_required
+def admin_issues():
+    page = request.args.get('page', 1, type=int)
+    pagination = Issue.query.order_by(Issue.id.desc()).paginate(page=page, per_page=20, error_out=False)
+    return render_template('admin_issues.html', issues=pagination.items, pagination=pagination)
+
+
+@app.route('/admin/issues/<int:issue_id>/status', methods=['POST'])
+@login_required
+@admin_required
+def update_issue_status(issue_id):
+    issue = Issue.query.get_or_404(issue_id)
+    new_status = request.form.get('status')
+    if new_status in ('Submitted', 'In Progress', 'Resolved'):
+        issue.status = new_status
+        db.session.commit()
+    return redirect(url_for('admin_issues'))
+
+
+# ---------- Misc ----------
 
 @app.route('/healthz')
 def healthz():
@@ -547,7 +701,6 @@ def copilot_chat():
     if not api_key:
         return {"reply": "The Copilot isn't fully set up yet — the site owner needs to add an ANTHROPIC_API_KEY. In the meantime, browse the category list above for verified helplines."}
 
-    # Ground the assistant in Sahay's own helpline data so it doesn't hallucinate numbers
     context_lines = []
     for cat in SAHAY_CATEGORIES.values():
         helplines = ", ".join(f"{h['name']}: {h['number']}" for h in cat['helplines'])
@@ -598,7 +751,13 @@ def sitemap_xml():
     return app.response_class("\n".join(xml_parts), mimetype='application/xml')
 
 
-# Global Error Handlers
+# ---------- Error handlers ----------
+
+@app.errorhandler(403)
+def forbidden_error(error):
+    return render_template('error.html', error_code=403, error_message="You don't have permission to view this page."), 403
+
+
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('error.html', error_code=404, error_message="The requested resource or page could not be found."), 404
