@@ -48,12 +48,25 @@
                 <a href="/" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-house"></i> Home</a>
                 <a href="/issues-feed" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-chart-pie"></i> Live Dashboard</a>
                 <a href="/report" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> Report Issue</a>
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                <a href="{{ url_for('admin_issues') }}" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-user-shield"></i> Admin</a>
+                {% endif %}
             </nav>
 
             <div class="flex items-center gap-3">
-                <a href="/report" class="hidden sm:inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/25 transition transform active:scale-95">
-                    <i class="fa-solid fa-plus"></i> Report Incident
+                {% if current_user.is_authenticated %}
+                <span class="hidden sm:inline text-sm text-slate-500">Hi, {{ current_user.name.split(' ')[0] }}</span>
+                <a href="{{ url_for('logout') }}" class="hidden sm:inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold text-sm transition">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out
                 </a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="hidden sm:inline-flex items-center gap-2 text-slate-600 hover:text-blue-600 px-3 py-2.5 font-semibold text-sm transition">
+                    Log In
+                </a>
+                <a href="{{ url_for('register') }}" class="hidden sm:inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/25 transition transform active:scale-95">
+                    Sign Up
+                </a>
+                {% endif %}
                 <!-- MOBILE MENU TOGGLE -->
                 <button onclick="toggleMobileMenu()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition" aria-label="Toggle menu">
                     <i class="fa-solid fa-bars text-lg"></i>
@@ -66,8 +79,34 @@
             <a href="/" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-house w-4"></i> Home</a>
             <a href="/issues-feed" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-chart-pie w-4"></i> Live Dashboard</a>
             <a href="/report" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation w-4"></i> Report Issue</a>
+            {% if current_user.is_authenticated %}
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('admin_issues') }}" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-user-shield w-4"></i> Admin</a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-right-from-bracket w-4"></i> Log Out</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-right-to-bracket w-4"></i> Log In</a>
+                <a href="{{ url_for('register') }}" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-user-plus w-4"></i> Sign Up</a>
+            {% endif %}
         </div>
     </header>
+
+    <!-- FLASH MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 flex flex-col gap-2">
+            {% for category, message in messages %}
+            <div class="rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2
+                        {% if category == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-700
+                        {% elif category == 'error' or category == 'danger' %}bg-rose-50 border border-rose-200 text-rose-700
+                        {% else %}bg-blue-50 border border-blue-200 text-blue-700{% endif %}">
+                <i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'error' or category == 'danger' %}fa-circle-exclamation{% else %}fa-circle-info{% endif %}"></i>
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
 
     <!-- MAIN CONTENT -->
     <main class="flex-grow">
