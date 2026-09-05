@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Sahay — Admin: Manage Issues{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-10">
+    <h1 class="text-2xl font-extrabold text-slate-900 mb-1">🛠️ Manage Reported Issues</h1>
+    <p class="text-slate-500 text-sm mb-8">Update the status of citizen reports as they're actioned.</p>
+
+    <div class="flex flex-col gap-4">
+        {% for issue in issues %}
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="bg-slate-100 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">{{ issue.category }}</span>
+                    <span class="text-xs text-slate-400">#{{ issue.id }} &middot; {{ issue.upvotes }} upvote{{ 's' if issue.upvotes != 1 else '' }}</span>
+                </div>
+                <p class="text-slate-700 text-sm">{{ issue.description }}</p>
+                <p class="text-xs text-slate-400 mt-1">
+                    Reported by {{ issue.reporter.name if issue.reporter else "Unknown" }}
+                    &middot; {{ "%.2f"|format(issue.lat) }}, {{ "%.2f"|format(issue.lng) }}
+                </p>
+            </div>
+
+            <form action="{{ url_for('update_issue_status', issue_id=issue.id) }}" method="POST" class="flex items-center gap-2 shrink-0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <select name="status" class="px-3 py-2 border border-slate-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600">
+                    <option value="Submitted" {% if issue.status == 'Submitted' %}selected{% endif %}>Submitted</option>
+                    <option value="In Progress" {% if issue.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                    <option value="Resolved" {% if issue.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                </select>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition">Update</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="text-center py-16 bg-white rounded-2xl border border-slate-200">
+            <p class="text-slate-500 font-medium">No issues reported yet.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if pagination and pagination.pages > 1 %}
+    <div class="flex justify-center items-center gap-3 mt-10">
+        <a href="{{ url_for('admin_issues', page=pagination.prev_num) if pagination.has_prev else '#' }}"
+           class="px-4 py-2 rounded-lg text-sm font-bold {% if pagination.has_prev %}bg-white border border-slate-200 text-slate-700 hover:bg-slate-50{% else %}bg-slate-100 text-slate-300 pointer-events-none{% endif %}">
+            &larr; Previous
+        </a>
+        <span class="text-sm text-slate-500 font-medium">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        <a href="{{ url_for('admin_issues', page=pagination.next_num) if pagination.has_next else '#' }}"
+           class="px-4 py-2 rounded-lg text-sm font-bold {% if pagination.has_next %}bg-white border border-slate-200 text-slate-700 hover:bg-slate-50{% else %}bg-slate-100 text-slate-300 pointer-events-none{% endif %}">
+            Next &rarr;
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
