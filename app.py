@@ -33,6 +33,48 @@ NEARBY_FACILITY_TAGS = {
     "fire_station": [("amenity", "fire_station")],
     "pharmacy": [("amenity", "pharmacy")],
     "government": [("office", "government"), ("amenity", "townhall")],
+    "post_office": [("amenity", "post_office")],
+    "veterinary": [("amenity", "veterinary")],
+    "courthouse": [("amenity", "courthouse")],
+}
+
+NEARBY_FACILITY_LABELS = {
+    "hospital": "Hospitals",
+    "police": "Police Stations",
+    "fire_station": "Fire Stations",
+    "pharmacy": "Pharmacies",
+    "government": "Government / e-Seva Offices",
+    "post_office": "Post Offices",
+    "veterinary": "Veterinary Clinics",
+    "courthouse": "Courts & Legal Aid Offices",
+}
+
+# Maps each Sahay category to the most relevant nearby-facility type
+CATEGORY_TO_FACILITY = {
+    "women-safety": "police",
+    "mental-health": "hospital",
+    "cyber-fraud": "police",
+    "utilities-disruption": "government",
+    "environment-civic": "government",
+    "construction": "government",
+    "courier-logistics": "post_office",
+    "waste-recycling": "government",
+    "local-community": "government",
+    "child-protection": "police",
+    "senior-citizens": "hospital",
+    "legal-aid": "courthouse",
+    "disaster-management": "fire_station",
+    "road-safety": "police",
+    "medical-emergency": "hospital",
+    "consumer-rights": "government",
+    "agriculture": "government",
+    "travel-tourism": "government",
+    "tech-support": "government",
+    "animal-rescue": "veterinary",
+    "fire-services": "fire_station",
+    "railway-safety": "police",
+    "blood-bank": "hospital",
+    "general-help": "government",
 }
 
 app = Flask(__name__)
@@ -538,7 +580,10 @@ def view_category(category_id):
     category_data = SAHAY_CATEGORIES.get(category_id)
     if not category_data:
         return render_template('index.html', categories=SAHAY_CATEGORIES), 404
-    return render_template('category_detail.html', category=category_data, category_id=category_id)
+    nearby_type = CATEGORY_TO_FACILITY.get(category_id, 'government')
+    nearby_label = NEARBY_FACILITY_LABELS.get(nearby_type, 'Nearby Help')
+    return render_template('category_detail.html', category=category_data, category_id=category_id,
+                            nearby_type=nearby_type, nearby_label=nearby_label)
 
 
 @app.route('/issues-feed')
