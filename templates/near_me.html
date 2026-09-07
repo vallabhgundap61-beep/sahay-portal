@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Sahay — Find Help Near Me{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<div class="max-w-4xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-extrabold text-slate-900 mb-2">📍 Find Help Near Me</h1>
+    <p class="text-slate-500 mb-8">Use your current location to find the nearest hospitals, police stations, and other essential services.</p>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-5">
+            <label class="font-bold text-slate-700 text-sm shrink-0">What are you looking for?</label>
+            <select id="facilityType" class="flex-grow px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <option value="hospital">🏥 Hospitals</option>
+                <option value="police">🚓 Police Stations</option>
+                <option value="fire_station">🚒 Fire Stations</option>
+                <option value="pharmacy">💊 Pharmacies</option>
+                <option value="government">🏢 Government / e-Seva Offices</option>
+            </select>
+        </div>
+        <button id="locateBtn" onclick="findNearby()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-location-crosshairs"></i> Use My Location
+        </button>
+        <p id="statusMsg" class="text-sm text-slate-500 mt-3 text-center"></p>
+    </div>
+
+    <div id="map" class="w-full h-80 rounded-2xl border border-slate-200 mb-6 hidden"></div>
+
+    <div id="resultsList" class="flex flex-col gap-3"></div>
+</div>
+
+<script>
+    let map = null;
+    let markersLayer = null;
+
+    function initMap(lat, lng) {
+        document.getElementById('map').classList.remove('hidden');
+        if (!map) {
+            map = L.map('map').setView([lat, lng], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            markersLayer = L.layerGroup().addTo(map);
+        } else {
+            map.setView([lat, lng], 14);
+            markersLayer.clearLayers();
+        }
+        L.marker([lat, lng], { title: "You are here" })
+            .addTo(markersLayer)
+            .bindPopup("<b>You are here</b>")
+            .openPopup();
+    }
+
+    function findNearby() {
+        const statusMsg = document.getElementById('statusMsg');
+        const btn = document.getElementById('locateBtn');
+        const resultsList = document.getElementById('resultsList');
+
+        if (!navigator.geolocation) {
+            statusMsg.innerText = "Your browser doesn't support location access.";
+            return;
+        }
+
+        btn.disabled = true;
+        statusMsg.innerText = "Getting your location...";
+        resultsList.innerHTML = "";
+
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const type = document.getElementById('facilityType').value;
+
+                initMap(lat, lng);
+                statusMsg.innerText = "Searching nearby...";
+
+                fetch('/api/nearby', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lat: lat, lng: lng, type: type })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    btn.disabled = false;
+                    if (data.error) {
+                        statusMsg.innerText = data.error;
+                        return;
+                    }
+                    if (!data.results || data.results.length === 0) {
+                        statusMsg.innerText = "No results found within 5km. Try a different category.";
+                        return;
+                    }
+                    statusMsg.innerText = `Found ${data.results.length} result(s) within 5km.`;
+                    renderResults(data.results, lat, lng);
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    statusMsg.innerText = "Couldn't reach the location service. Please try again.";
+                });
+            },
+            function () {
+                btn.disabled = false;
+                statusMsg.innerText = "Location access denied. Please enable location permissions and try again.";
+            }
+        );
+    }
+
+    function renderResults(results, userLat, userLng) {
+        const resultsList = document.getElementById('resultsList');
+        resultsList.innerHTML = "";
+
+        results.forEach(place => {
+            L.marker([place.lat, place.lng])
+                .addTo(markersLayer)
+                .bindPopup(`<b>${place.name}</b><br>${place.distance_km} km away`);
+
+            const card = document.createElement('div');
+            card.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center gap-4 shadow-xs";
+            card.innerHTML = `
+                <div>
+                    <h4 class="font-bold text-slate-900">${place.name}</h4>
+                    <p class="text-sm text-slate-500">${place.distance_km} km away</p>
+                </div>
+                <a href="https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${place.lat},${place.lng}"
+                   target="_blank" rel="noopener"
+                   class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition shrink-0">
+                    Directions
+                </a>
+            `;
+            resultsList.appendChild(card);
+        });
+    }
+</script>
+{% endblock %}
+
