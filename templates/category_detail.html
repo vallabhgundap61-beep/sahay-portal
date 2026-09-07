@@ -2,6 +2,9 @@
 {% block title %}{{ category.title }} — Sahay{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <div class="max-w-4xl mx-auto px-4 py-12">
     <a href="{{ url_for('index') }}" class="text-blue-600 font-medium inline-flex items-center gap-1.5 mb-6 hover:underline">
         <i class="fa-solid fa-arrow-left"></i> Back to Categories
@@ -58,6 +61,121 @@
         </div>
         {% endif %}
 
+        <!-- NEARBY LOCATIONS -->
+        <div>
+            <h3 class="text-slate-800 font-bold border-b-2 border-slate-100 pb-2 mb-4">📍 Nearby {{ nearby_label }}</h3>
+            <button id="locateBtn" onclick="findNearbyForCategory()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition flex items-center gap-2 mb-3">
+                <i class="fa-solid fa-location-crosshairs"></i> Find Near My Location
+            </button>
+            <p id="statusMsg" class="text-sm text-slate-500 mb-3"></p>
+            <div id="map" class="w-full h-72 rounded-xl border border-slate-200 mb-4 hidden"></div>
+            <div id="resultsList" class="flex flex-col gap-3"></div>
+        </div>
+
     </div>
 </div>
+
+<script>
+    const NEARBY_TYPE = "{{ nearby_type }}";
+    let map = null;
+    let markersLayer = null;
+
+    function initMap(lat, lng) {
+        document.getElementById('map').classList.remove('hidden');
+        if (!map) {
+            map = L.map('map').setView([lat, lng], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            markersLayer = L.layerGroup().addTo(map);
+        } else {
+            map.setView([lat, lng], 14);
+            markersLayer.clearLayers();
+        }
+        L.marker([lat, lng], { title: "You are here" })
+            .addTo(markersLayer)
+            .bindPopup("<b>You are here</b>")
+            .openPopup();
+    }
+
+    function findNearbyForCategory() {
+        const statusMsg = document.getElementById('statusMsg');
+        const btn = document.getElementById('locateBtn');
+        const resultsList = document.getElementById('resultsList');
+
+        if (!navigator.geolocation) {
+            statusMsg.innerText = "Your browser doesn't support location access.";
+            return;
+        }
+
+        btn.disabled = true;
+        statusMsg.innerText = "Getting your location...";
+        resultsList.innerHTML = "";
+
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                initMap(lat, lng);
+                statusMsg.innerText = "Searching nearby...";
+
+                fetch('/api/nearby', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lat: lat, lng: lng, type: NEARBY_TYPE })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    btn.disabled = false;
+                    if (data.error) {
+                        statusMsg.innerText = data.error;
+                        return;
+                    }
+                    if (!data.results || data.results.length === 0) {
+                        statusMsg.innerText = "No results found within 5km of your location.";
+                        return;
+                    }
+                    statusMsg.innerText = `Found ${data.results.length} result(s) within 5km.`;
+                    renderResults(data.results, lat, lng);
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    statusMsg.innerText = "Couldn't reach the location service. Please try again.";
+                });
+            },
+            function () {
+                btn.disabled = false;
+                statusMsg.innerText = "Location access denied. Please enable location permissions and try again.";
+            }
+        );
+    }
+
+    function renderResults(results, userLat, userLng) {
+        const resultsList = document.getElementById('resultsList');
+        resultsList.innerHTML = "";
+
+        results.forEach(place => {
+            L.marker([place.lat, place.lng])
+                .addTo(markersLayer)
+                .bindPopup(`<b>${place.name}</b><br>${place.distance_km} km away`);
+
+            const card = document.createElement('div');
+            card.className = "bg-slate-50 border border-slate-200 rounded-xl p-4 flex justify-between items-center gap-4";
+            card.innerHTML = `
+                <div>
+                    <h4 class="font-bold text-slate-900 text-sm">${place.name}</h4>
+                    <p class="text-xs text-slate-500">${place.distance_km} km away</p>
+                </div>
+                <a href="https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${place.lat},${place.lng}"
+                   target="_blank" rel="noopener"
+                   class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-xs transition shrink-0">
+                    Directions
+                </a>
+            `;
+            resultsList.appendChild(card);
+        });
+    }
+</script>
 {% endblock %}
