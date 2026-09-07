@@ -48,6 +48,7 @@
                 <a href="/" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-house"></i> Home</a>
                 <a href="/issues-feed" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-chart-pie"></i> Live Dashboard</a>
                 <a href="/report" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> Report Issue</a>
+                <a href="/near-me" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-location-dot"></i> Near Me</a>
                 {% if current_user.is_authenticated and current_user.is_admin %}
                 <a href="{{ url_for('admin_issues') }}" class="hover:text-blue-600 transition flex items-center gap-1.5"><i class="fa-solid fa-user-shield"></i> Admin</a>
                 {% endif %}
@@ -79,6 +80,7 @@
             <a href="/" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-house w-4"></i> Home</a>
             <a href="/issues-feed" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-chart-pie w-4"></i> Live Dashboard</a>
             <a href="/report" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation w-4"></i> Report Issue</a>
+            <a href="/near-me" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-location-dot w-4"></i> Near Me</a>
             {% if current_user.is_authenticated %}
                 {% if current_user.is_admin %}
                 <a href="{{ url_for('admin_issues') }}" class="px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2"><i class="fa-solid fa-user-shield w-4"></i> Admin</a>
