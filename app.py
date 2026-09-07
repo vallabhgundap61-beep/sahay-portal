@@ -37,12 +37,16 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# Database Configuration: Uses Render's Postgres URL if available, falls back to local SQLite
+# Database Configuration: Uses Render's Postgres URL if available, falls back to local SQLite.
+# Using an explicit absolute path (rather than a bare relative 'sqlite:///sahay.db') avoids any
+# ambiguity about whether Flask resolves it against the project root or the instance folder —
+# and the new filename guarantees a fresh file even if an old one is lingering on disk somewhere.
 database_url = os.environ.get('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///sahay.db'
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url or f"sqlite:///{os.path.join(BASE_DIR, 'sahay_v2.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
