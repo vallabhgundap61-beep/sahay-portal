@@ -787,16 +787,33 @@ def api_nearby():
     out center 30;
     """
 
-    try:
-        resp = requests.post(
-            "https://overpass-api.de/api/interpreter",
-            data={"data": overpass_query},
-            timeout=20
-        )
-        resp.raise_for_status()
-        elements = resp.json().get('elements', [])
-    except Exception as e:
-        app.logger.error(f"Overpass query failed: {e}")
+    # overpass-api.de has been intermittently rejecting requests (406) under load lately,
+    # so we try it first and fall back to community mirrors if it fails.
+    overpass_endpoints = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
+    ]
+    headers = {
+        "User-Agent": "SahayCitizenPortal/1.0 (https://sahay-portal.onrender.com)",
+        "Accept": "application/json",
+    }
+
+    elements = None
+    last_error = None
+    for endpoint in overpass_endpoints:
+        try:
+            resp = requests.post(endpoint, data={"data": overpass_query}, headers=headers, timeout=15)
+            resp.raise_for_status()
+            elements = resp.json().get('elements', [])
+            break
+        except Exception as e:
+            last_error = e
+            app.logger.warning(f"Overpass endpoint {endpoint} failed: {e}")
+            continue
+
+    if elements is None:
+        app.logger.error(f"All Overpass endpoints failed: {last_error}")
         return {"error": "Couldn't reach the location service right now. Please try again in a moment."}, 502
 
     results = []
