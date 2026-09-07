@@ -1,10 +1,12 @@
 import os
 import uuid
+import math
 from functools import wraps
 
 import anthropic
 import cloudinary
 import cloudinary.uploader
+import requests
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import CSRFProtect
@@ -13,6 +15,25 @@ from flask_limiter.util import get_remote_address
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+
+
+def haversine_km(lat1, lon1, lat2, lon2):
+    R = 6371
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(a))
+
+
+# Maps a facility type shown in the UI to the OpenStreetMap tags used to find it
+NEARBY_FACILITY_TAGS = {
+    "hospital": [("amenity", "hospital")],
+    "police": [("amenity", "police")],
+    "fire_station": [("amenity", "fire_station")],
+    "pharmacy": [("amenity", "pharmacy")],
+    "government": [("office", "government"), ("amenity", "townhall")],
+}
 
 app = Flask(__name__)
 
@@ -684,6 +705,73 @@ def update_issue_status(issue_id):
 
 # ---------- Misc ----------
 
+@app.route('/near-me')
+def near_me():
+    return render_template('near_me.html')
+
+
+@app.route('/api/nearby', methods=['POST'])
+@csrf.exempt
+@limiter.limit("20 per minute")
+def api_nearby():
+    data = request.get_json(silent=True) or {}
+
+    try:
+        lat = float(data.get('lat'))
+        lng = float(data.get('lng'))
+    except (TypeError, ValueError):
+        return {"error": "Valid location coordinates are required."}, 400
+
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return {"error": "Coordinates out of range."}, 400
+
+    facility_type = data.get('type', 'hospital')
+    tags = NEARBY_FACILITY_TAGS.get(facility_type, NEARBY_FACILITY_TAGS['hospital'])
+
+    radius_m = 5000
+    query_parts = []
+    for key, value in tags:
+        query_parts.append(f'node["{key}"="{value}"](around:{radius_m},{lat},{lng});')
+        query_parts.append(f'way["{key}"="{value}"](around:{radius_m},{lat},{lng});')
+
+    overpass_query = f"""
+    [out:json][timeout:20];
+    (
+      {' '.join(query_parts)}
+    );
+    out center 30;
+    """
+
+    try:
+        resp = requests.post(
+            "https://overpass-api.de/api/interpreter",
+            data={"data": overpass_query},
+            timeout=20
+        )
+        resp.raise_for_status()
+        elements = resp.json().get('elements', [])
+    except Exception as e:
+        app.logger.error(f"Overpass query failed: {e}")
+        return {"error": "Couldn't reach the location service right now. Please try again in a moment."}, 502
+
+    results = []
+    for el in elements:
+        el_lat = el.get('lat') or (el.get('center') or {}).get('lat')
+        el_lng = el.get('lon') or (el.get('center') or {}).get('lon')
+        if el_lat is None or el_lng is None:
+            continue
+        name = el.get('tags', {}).get('name', 'Unnamed location')
+        results.append({
+            "name": name,
+            "lat": el_lat,
+            "lng": el_lng,
+            "distance_km": round(haversine_km(lat, lng, el_lat, el_lng), 2)
+        })
+
+    results.sort(key=lambda r: r['distance_km'])
+    return {"results": results[:15]}
+
+
 @app.route('/healthz')
 def healthz():
     return {"status": "ok"}, 200
@@ -746,7 +834,7 @@ def robots_txt():
 @app.route('/sitemap.xml')
 def sitemap_xml():
     base_url = request.url_root.rstrip('/')
-    pages = ['/', '/issues-feed', '/report'] + [f'/category/{cat_id}' for cat_id in SAHAY_CATEGORIES]
+    pages = ['/', '/issues-feed', '/report', '/near-me'] + [f'/category/{cat_id}' for cat_id in SAHAY_CATEGORIES]
     xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>',
                  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for p in pages:
